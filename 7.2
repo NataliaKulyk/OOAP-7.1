@@ -1,0 +1,96 @@
+from abc import ABC, abstractmethod
+
+# Клас Command - абстрактний базовий клас для всіх команд
+class Command(ABC):
+    @abstractmethod
+    def execute(self):
+        pass
+
+    @abstractmethod
+    def undo(self):
+        pass
+
+# Клас AddCommand - конкретна реалізація команди додавання
+class AddCommand(Command):
+    def __init__(self, calculator, value):
+        self.calculator = calculator
+        self.value = value
+        self.added = False
+
+    def execute(self):
+        # Додаємо значення до поточного результату калькулятора
+        self.calculator.add(self.value)
+        self.added = True
+
+    def undo(self):
+        # Відміняємо додавання, якщо воно було виконано
+        if self.added:
+            self.calculator.subtract(self.value)
+            self.added = False
+
+# Клас SubtractCommand - конкретна реалізація команди віднімання
+class SubtractCommand(Command):
+    def __init__(self, calculator, value):
+        self.calculator = calculator
+        self.value = value
+        self.subtracted = False
+
+    def execute(self):
+        # Віднімаємо значення від поточного результату калькулятора
+        self.calculator.subtract(self.value)
+        self.subtracted = True
+
+    def undo(self):
+        # Відміняємо віднімання, якщо воно було виконано
+        if self.subtracted:
+            self.calculator.add(self.value)
+            self.subtracted = False
+
+# Клас Calculator - клас калькулятора, що здійснює операції
+class Calculator:
+    def __init__(self):
+        self.current = 0
+        self.history = []
+
+    def add(self, value):
+        # Додаємо значення до поточного результату
+        self.current += value
+
+    def subtract(self, value):
+        # Віднімаємо значення від поточного результату
+        self.current -= value
+
+    def execute_command(self, command):
+        # Виконуємо команду і додаємо її до історії
+        command.execute()
+        self.history.append(command)
+
+    def undo(self):
+        # Відміняємо останню виконану команду
+        if self.history:
+            command = self.history.pop()
+            command.undo()
+
+# Клас Client - клас клієнта, який використовує калькулятор
+class Client:
+    def __init__(self):
+        self.calculator = Calculator()
+
+    def run(self):
+        # Виконуємо додавання 10 до калькулятора
+        self.calculator.execute_command(AddCommand(self.calculator, 10))
+        print(f"Current value: {self.calculator.current}")
+
+        # Виконуємо віднімання 5 від калькулятора
+        self.calculator.execute_command(SubtractCommand(self.calculator, 5))
+        print(f"Current value: {self.calculator.current}")
+
+        # Відміняємо останню виконану команду (віднімання 5)
+        self.calculator.undo()
+        print(f"Current value after undo: {self.calculator.current}")
+
+# Виконання програми
+if __name__ == "__main__":
+    # Створюємо клієнта і запускаємо його метод run
+    client = Client()
+    client.run()
