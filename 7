@@ -1,0 +1,133 @@
+# Імпорт модуля tkinter і messagebox з tkinter
+import tkinter as tk
+from tkinter import messagebox
+
+# Базовий клас команди
+class Command:
+    def execute(self):
+        pass
+
+    def undo(self):
+        pass
+
+# Конкретна команда для вирізання тексту
+class CutCommand(Command):
+    def __init__(self, editor):
+        self.editor = editor
+        self.backup = None
+
+    def execute(self):
+        # Збереження виділеного тексту в буфер обміну та видалення його з редактора
+        self.backup = self.editor.text.get(tk.SEL_FIRST, tk.SEL_LAST)
+        self.editor.text.delete(tk.SEL_FIRST, tk.SEL_LAST)
+        self.editor.root.clipboard_clear()
+        self.editor.root.clipboard_append(self.backup)
+
+    def undo(self):
+        # Відміна вирізання шляхом вставлення збереженого тексту
+        self.editor.text.insert(tk.INSERT, self.backup)
+
+# Конкретна команда для копіювання тексту
+class CopyCommand(Command):
+    def __init__(self, editor):
+        self.editor = editor
+
+    def execute(self):
+        # Копіювання виділеного тексту в буфер обміну
+        selected_text = self.editor.text.get(tk.SEL_FIRST, tk.SEL_LAST)
+        if selected_text:
+            self.editor.root.clipboard_clear()
+            self.editor.root.clipboard_append(selected_text)
+
+# Конкретна команда для вставлення тексту
+class PasteCommand(Command):
+    def __init__(self, editor):
+        self.editor = editor
+
+    def execute(self):
+        # Вставлення тексту з буфера обміну в позицію курсора
+        text_to_paste = self.editor.root.clipboard_get()
+        self.editor.text.insert(tk.INSERT, text_to_paste)
+
+# Конкретна команда для надання виділеному тексту курсивом
+class ItalicCommand(Command):
+    def __init__(self, editor):
+        self.editor = editor
+
+    def execute(self):
+        # Додавання тегу "italic" до виділеного тексту для зміни його стилю на курсив
+        sel_start = self.editor.text.index(tk.SEL_FIRST)
+        sel_end = self.editor.text.index(tk.SEL_LAST)
+        if sel_start and sel_end:
+            try:
+                self.editor.text.tag_add("italic", sel_start, sel_end)
+                self.editor.text.tag_configure("italic", font=("Arial", 10, "italic"))
+            except tk.TclError:
+                messagebox.showinfo("Info", "No text selected!")
+        else:
+            messagebox.showinfo("Info", "No text selected!")
+
+# Клас для керування командами
+class Invoker:
+    def __init__(self):
+        self.history = []
+
+    def store_and_execute(self, command):
+        # Виконання команди та збереження її в історію
+        command.execute()
+        self.history.append(command)
+
+    def undo_last_command(self):
+        # Відміна останньої команди з історії
+        if self.history:
+            command = self.history.pop()
+            command.undo()
+
+# Клас для створення текстового редактора з підтримкою команд
+class TextEditorApp:
+    def __init__(self, root):
+        # Ініціалізація головного вікна та текстового поля
+        self.root = root
+        self.root.title("Simple Notepad Clone")
+        self.text = tk.Text(root)
+        self.text.pack()
+
+        self.invoker = Invoker()
+
+        # Створення кнопок для виклику команд
+        self.cut_button = tk.Button(root, text="Cut", command=self.cut_text)
+        self.cut_button.pack(side=tk.LEFT)
+
+        self.copy_button = tk.Button(root, text="Copy", command=self.copy_text)
+        self.copy_button.pack(side=tk.LEFT)
+
+        self.paste_button = tk.Button(root, text="Paste", command=self.paste_text)
+        self.paste_button.pack(side=tk.LEFT)
+
+        self.italic_button = tk.Button(root, text="Italic", command=self.italic_text)
+        self.italic_button.pack(side=tk.LEFT)
+
+    def cut_text(self):
+        # Виклик команди для вирізання тексту
+        command = CutCommand(self)
+        self.invoker.store_and_execute(command)
+
+    def copy_text(self):
+        # Виклик команди для копіювання тексту
+        command = CopyCommand(self)
+        self.invoker.store_and_execute(command)
+
+    def paste_text(self):
+        # Виклик команди для вставлення тексту
+        command = PasteCommand(self)
+        self.invoker.store_and_execute(command)
+
+    def italic_text(self):
+        # Виклик команди для надання виділеному тексту курсивом
+        command = ItalicCommand(self)
+        self.invoker.store_and_execute(command)
+
+# Створення головного вікна та інстанціювання класу TextEditorApp
+root = tk.Tk()
+app = TextEditorApp(root)
+root.mainloop()
